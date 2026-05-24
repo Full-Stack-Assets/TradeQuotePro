@@ -22,7 +22,7 @@ cd tradequote-pro
 export STRIPE_SECRET_KEY=sk_test_...
 export NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
 export SUPABASE_PROJECT_REF=your_supabase_ref
-export DATABASE_URL=******db.your-project.supabase.co:5432/postgres
+export DATABASE_URL=postgresql://postgres:[password]@db.your-project.supabase.co:5432/postgres
 export NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 export NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
 export STRIPE_WEBHOOK_SECRET=whsec_...
@@ -53,7 +53,7 @@ git clone https://github.com/your-username/microsaas-starter.git my-app \
 Apply app-specific migration file:
 
 ```bash
-supabase db push --db-url "$DATABASE_URL" --schema-file "packages/database/$APP/01_schema.sql"
+supabase db execute --db-url "$DATABASE_URL" --file "packages/database/$APP/01_schema.sql"
 ```
 
 ## CI/CD

@@ -51,11 +51,10 @@ supabase link --project-ref "$SUPABASE_PROJECT_REF"
 # 4. Run migrations
 if [ -f "$MIGRATION_FILE" ]; then
   echo "📦 Running database migrations for $APP..."
-  supabase db push --db-url "$DATABASE_URL" --schema-file "$MIGRATION_FILE"
+  supabase db execute --db-url "$DATABASE_URL" --file "$MIGRATION_FILE"
 else
-  echo "⚠️ Migration file not found: $MIGRATION_FILE"
-  echo "📦 Running default database migrations..."
-  supabase db push
+  echo "❌ Migration file not found: $MIGRATION_FILE"
+  exit 1
 fi
 
 # 5. Set environment variables in Supabase
