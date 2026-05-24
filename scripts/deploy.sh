@@ -8,8 +8,12 @@ set -euo pipefail
 
 echo "🚀 Starting deployment..."
 
-# Precedence: APP > ACTIVE_APP > default tradequote
-APP="${APP:-${ACTIVE_APP:-tradequote}}"
+# Precedence: APP > ACTIVE_APP > active-app symlink > default tradequote
+APP="${APP:-${ACTIVE_APP:-}}"
+if [ -z "$APP" ] && [ -L "active-app" ]; then
+  APP="$(basename "$(readlink active-app)")"
+fi
+APP="${APP:-tradequote}"
 MIGRATION_FILE="packages/database/$APP/01_schema.sql"
 
 case "$APP" in

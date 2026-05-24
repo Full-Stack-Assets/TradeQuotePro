@@ -31,9 +31,9 @@ export STRIPE_WEBHOOK_SECRET=whsec_...
 ## Deploy any app
 
 ```bash
-./scripts/switch-app.sh tradequote && APP=tradequote ./scripts/deploy.sh
-./scripts/switch-app.sh inkmanager && APP=inkmanager ./scripts/deploy.sh
-./scripts/switch-app.sh invoiceflow && APP=invoiceflow ./scripts/deploy.sh
+./scripts/switch-app.sh tradequote && ./scripts/deploy.sh
+./scripts/switch-app.sh inkmanager && ./scripts/deploy.sh
+./scripts/switch-app.sh invoiceflow && ./scripts/deploy.sh
 ```
 
 ## Duplicate this repo for a specific app (one command)
