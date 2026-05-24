@@ -16,7 +16,7 @@ brew install supabase/tap/supabase
 ## One-time setup
 
 ```bash
-git clone https://github.com/your-username/microsaas-starter.git tradequote-pro
+git clone https://github.com/Full-Stack-Assets/TradeQuotePro.git tradequote-pro
 cd tradequote-pro
 
 export STRIPE_SECRET_KEY=sk_test_...
@@ -39,7 +39,7 @@ export STRIPE_WEBHOOK_SECRET=whsec_...
 ## Duplicate this repo for a specific app (one command)
 
 ```bash
-git clone https://github.com/your-username/microsaas-starter.git my-app \
+git clone https://github.com/Full-Stack-Assets/TradeQuotePro.git my-app \
   && cd my-app \
   && ./scripts/switch-app.sh tradequote
 ```

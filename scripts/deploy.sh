@@ -8,6 +8,7 @@ set -euo pipefail
 
 echo "🚀 Starting deployment..."
 
+# Precedence: APP > ACTIVE_APP > default tradequote
 APP="${APP:-${ACTIVE_APP:-tradequote}}"
 MIGRATION_FILE="packages/database/$APP/01_schema.sql"
 
