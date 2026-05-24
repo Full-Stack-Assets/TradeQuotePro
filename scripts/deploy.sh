@@ -9,6 +9,7 @@ set -euo pipefail
 echo "🚀 Starting deployment..."
 
 # Precedence: APP > ACTIVE_APP > active-app symlink > default tradequote
+# Canonical app identifiers: tradequote (TradeQuote Pro), inkmanager, invoiceflow
 APP="${APP:-${ACTIVE_APP:-}}"
 if [ -z "$APP" ] && [ -L "active-app" ]; then
   APP="$(basename "$(readlink active-app)")"
