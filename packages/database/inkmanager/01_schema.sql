@@ -1,0 +1,1 @@
+-- InkManager schema (appointments, artists, profiles)

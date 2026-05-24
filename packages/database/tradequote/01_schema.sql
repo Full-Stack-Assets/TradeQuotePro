@@ -1,0 +1,2 @@
+-- TradeQuote Pro schema migration placeholder
+-- Replace this with the full TradeQuote Pro SQL schema.
