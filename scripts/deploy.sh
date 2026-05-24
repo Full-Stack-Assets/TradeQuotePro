@@ -65,8 +65,7 @@ fi
 # 5. Set environment variables in Supabase
 echo "🔐 Setting Supabase secrets..."
 supabase secrets set \
-  STRIPE_SECRET_KEY="$STRIPE_SECRET_KEY" \
-  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="$NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY"
+  STRIPE_SECRET_KEY="$STRIPE_SECRET_KEY"
 
 # 6. Deploy to Vercel
 echo "🌐 Deploying to Vercel..."
