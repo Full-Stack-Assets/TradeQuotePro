@@ -81,4 +81,5 @@ jobs:
           source: ./active-app
 
       - name: Show output
-        run: echo "Cloud Run URL: ${{ steps.deploy.outputs.url }}"
+        run: |
+          echo "Cloud Run URL: ${{ steps.deploy.outputs.url }}"
