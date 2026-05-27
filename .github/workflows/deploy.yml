@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       app:
-        description: App to deploy
+        description: "App to deploy (tradequote|inkmanager|invoiceflow)"
         required: true
         default: tradequote
         type: choice
@@ -26,6 +26,9 @@ on:
 
 permissions:
   contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   deploy:
@@ -60,18 +63,39 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Select app
+      - name: Select active app
         run: ./scripts/switch-app.sh "$APP"
 
-      - name: Setup Node
+      - name: Verify repo is deployable
+        run: |
+          if [ ! -d "active-app" ]; then
+            echo "active-app is missing. This workflow expects ./scripts/switch-app.sh to create it."
+            exit 1
+          fi
+          if [ ! -f "active-app/package.json" ]; then
+            echo "No Next.js app detected at active-app (missing active-app/package.json)."
+            echo "Place your Next.js app source in apps/$APP and commit the necessary files (including package.json)."
+            exit 1
+          fi
+
+      - name: Setup Node (cached)
+        if: ${{ hashFiles('active-app/package-lock.json') != '' }}
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
           cache-dependency-path: active-app/package-lock.json
 
+      - name: Setup Node
+        if: ${{ hashFiles('active-app/package-lock.json') == '' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
       - name: Resolve app/environment configuration
         shell: bash
+        env:
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
         run: |
           set -euo pipefail
           APP_UPPER="$(echo "$APP" | tr '[:lower:]' '[:upper:]')"
@@ -91,13 +115,14 @@ jobs:
 
           missing=0
           for pair in \
-            "VERCEL_TOKEN:$VERCEL_TOKEN" \
-            "VERCEL_ORG_ID:$VERCEL_ORG_ID" \
+            "VERCEL_TOKEN:${VERCEL_TOKEN:-}" \
+            "VERCEL_ORG_ID:${VERCEL_ORG_ID:-}" \
             "$PROJECT_VAR:$VERCEL_PROJECT_ID" \
             "$SUPABASE_URL_VAR:$NEXT_PUBLIC_SUPABASE_URL" \
             "$SUPABASE_ANON_VAR:$NEXT_PUBLIC_SUPABASE_ANON_KEY" \
             "$STRIPE_KEY_VAR:$STRIPE_SECRET_KEY" \
-            "$STRIPE_WEBHOOK_VAR:$STRIPE_WEBHOOK_SECRET"; do
+            "$STRIPE_WEBHOOK_VAR:$STRIPE_WEBHOOK_SECRET" \
+            "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-}"; do
             key="${pair%%:*}"
             value="${pair#*:}"
             if [ -z "$value" ]; then

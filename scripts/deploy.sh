@@ -34,6 +34,21 @@ case "$RUN_DB_MIGRATIONS" in
     ;;
 esac
 
+# Ensure active app points at the selected app (Vercel build/install commands depend on ./active-app)
+if [ ! -d "apps/$APP" ]; then
+  echo "❌ App directory not found: apps/$APP"
+  echo "Expected your Next.js app source to live under apps/$APP"
+  exit 1
+fi
+
+ln -sfn "apps/$APP" ./active-app
+
+if [ ! -f "active-app/package.json" ]; then
+  echo "❌ No app found at active-app (missing active-app/package.json)"
+  echo "Place a Next.js app in apps/$APP (or update ./active-app) before deploying."
+  exit 1
+fi
+
 # 1. Check environment variables
 required_vars=(
   STRIPE_SECRET_KEY
@@ -68,7 +83,7 @@ supabase link --project-ref "$SUPABASE_PROJECT_REF"
 # 4. Run migrations only when requested
 if [ "$RUN_DB_MIGRATIONS" = "true" ]; then
   if [ -f "$MIGRATION_FILE" ]; then
-    echo "📦 Running database migrations for $APP..."
+    echo "�� Running database migrations for $APP..."
     supabase db execute --db-url "$DATABASE_URL" --file "$MIGRATION_FILE"
   else
     echo "❌ Migration file not found: $MIGRATION_FILE"

@@ -5,6 +5,8 @@ One-click deploy scaffold for:
 - InkManager
 - InvoiceFlow
 
+This repo is a scaffold: the `apps/*` folders are placeholders. To deploy successfully, each app you deploy must contain a real Next.js project (at minimum `apps/<app>/package.json`).
+
 ## Deployment model
 
 This repository uses a **multi-app, per-environment deployment model**:
@@ -43,6 +45,12 @@ export STRIPE_WEBHOOK_SECRET=whsec_...
 ./scripts/switch-app.sh tradequote && ./scripts/deploy.sh
 ./scripts/switch-app.sh inkmanager && ./scripts/deploy.sh
 ./scripts/switch-app.sh invoiceflow && ./scripts/deploy.sh
+```
+
+If you prefer, you can also deploy by setting `APP` directly (this also updates `./active-app` automatically):
+
+```bash
+APP=tradequote ./scripts/deploy.sh
 ```
 
 Run DB migrations only when needed:
