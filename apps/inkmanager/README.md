@@ -1,3 +1,3 @@
-# InkManager app
+# Inkmanager app
 
-Place the InkManager Next.js app source here.
+This is a minimal Next.js application scaffold used by CI/CD deployment workflows.
