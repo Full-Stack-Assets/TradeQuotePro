@@ -4,6 +4,25 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      app:
+        description: App to deploy
+        required: true
+        default: tradequote
+        type: choice
+        options:
+          - tradequote
+          - inkmanager
+          - invoiceflow
+      environment:
+        description: Target environment
+        required: true
+        default: prod
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
 
 permissions:
   contents: read
@@ -11,33 +30,111 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      APP: ${{ github.event.inputs.app || 'tradequote' }}
+      DEPLOY_ENV: ${{ github.event.inputs.environment || 'prod' }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID_TRADEQUOTE_DEV: ${{ secrets.VERCEL_PROJECT_ID_TRADEQUOTE_DEV }}
+      VERCEL_PROJECT_ID_TRADEQUOTE_STAGING: ${{ secrets.VERCEL_PROJECT_ID_TRADEQUOTE_STAGING }}
+      VERCEL_PROJECT_ID_TRADEQUOTE_PROD: ${{ secrets.VERCEL_PROJECT_ID_TRADEQUOTE_PROD }}
+      VERCEL_PROJECT_ID_INKMANAGER_DEV: ${{ secrets.VERCEL_PROJECT_ID_INKMANAGER_DEV }}
+      VERCEL_PROJECT_ID_INKMANAGER_STAGING: ${{ secrets.VERCEL_PROJECT_ID_INKMANAGER_STAGING }}
+      VERCEL_PROJECT_ID_INKMANAGER_PROD: ${{ secrets.VERCEL_PROJECT_ID_INKMANAGER_PROD }}
+      VERCEL_PROJECT_ID_INVOICEFLOW_DEV: ${{ secrets.VERCEL_PROJECT_ID_INVOICEFLOW_DEV }}
+      VERCEL_PROJECT_ID_INVOICEFLOW_STAGING: ${{ secrets.VERCEL_PROJECT_ID_INVOICEFLOW_STAGING }}
+      VERCEL_PROJECT_ID_INVOICEFLOW_PROD: ${{ secrets.VERCEL_PROJECT_ID_INVOICEFLOW_PROD }}
+      NEXT_PUBLIC_SUPABASE_URL_DEV: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL_DEV }}
+      NEXT_PUBLIC_SUPABASE_URL_STAGING: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL_STAGING }}
+      NEXT_PUBLIC_SUPABASE_URL_PROD: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL_PROD }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY_DEV: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY_DEV }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY_STAGING: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY_STAGING }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY_PROD: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY_PROD }}
+      STRIPE_SECRET_KEY_DEV: ${{ secrets.STRIPE_SECRET_KEY_DEV }}
+      STRIPE_SECRET_KEY_STAGING: ${{ secrets.STRIPE_SECRET_KEY_STAGING }}
+      STRIPE_SECRET_KEY_PROD: ${{ secrets.STRIPE_SECRET_KEY_PROD }}
+      STRIPE_WEBHOOK_SECRET_DEV: ${{ secrets.STRIPE_WEBHOOK_SECRET_DEV }}
+      STRIPE_WEBHOOK_SECRET_STAGING: ${{ secrets.STRIPE_WEBHOOK_SECRET_STAGING }}
+      STRIPE_WEBHOOK_SECRET_PROD: ${{ secrets.STRIPE_WEBHOOK_SECRET_PROD }}
+
     steps:
       - uses: actions/checkout@v4
+
+      - name: Select app
+        run: ./scripts/switch-app.sh "$APP"
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
+          cache-dependency-path: active-app/package-lock.json
 
-      - name: Install dependencies
+      - name: Resolve app/environment configuration
+        shell: bash
         run: |
-          if [ -f package-lock.json ]; then
-            npm ci
-          elif [ -f active-app/package-lock.json ]; then
-            cd active-app && npm ci
-          else
-            echo "No package-lock.json found; skipping npm ci"
+          set -euo pipefail
+          APP_UPPER="$(echo "$APP" | tr '[:lower:]' '[:upper:]')"
+          ENV_UPPER="$(echo "$DEPLOY_ENV" | tr '[:lower:]' '[:upper:]')"
+
+          PROJECT_VAR="VERCEL_PROJECT_ID_${APP_UPPER}_${ENV_UPPER}"
+          SUPABASE_URL_VAR="NEXT_PUBLIC_SUPABASE_URL_${ENV_UPPER}"
+          SUPABASE_ANON_VAR="NEXT_PUBLIC_SUPABASE_ANON_KEY_${ENV_UPPER}"
+          STRIPE_KEY_VAR="STRIPE_SECRET_KEY_${ENV_UPPER}"
+          STRIPE_WEBHOOK_VAR="STRIPE_WEBHOOK_SECRET_${ENV_UPPER}"
+
+          VERCEL_PROJECT_ID="${!PROJECT_VAR:-}"
+          NEXT_PUBLIC_SUPABASE_URL="${!SUPABASE_URL_VAR:-}"
+          NEXT_PUBLIC_SUPABASE_ANON_KEY="${!SUPABASE_ANON_VAR:-}"
+          STRIPE_SECRET_KEY="${!STRIPE_KEY_VAR:-}"
+          STRIPE_WEBHOOK_SECRET="${!STRIPE_WEBHOOK_VAR:-}"
+
+          missing=0
+          for pair in \
+            "VERCEL_TOKEN:$VERCEL_TOKEN" \
+            "VERCEL_ORG_ID:$VERCEL_ORG_ID" \
+            "$PROJECT_VAR:$VERCEL_PROJECT_ID" \
+            "$SUPABASE_URL_VAR:$NEXT_PUBLIC_SUPABASE_URL" \
+            "$SUPABASE_ANON_VAR:$NEXT_PUBLIC_SUPABASE_ANON_KEY" \
+            "$STRIPE_KEY_VAR:$STRIPE_SECRET_KEY" \
+            "$STRIPE_WEBHOOK_VAR:$STRIPE_WEBHOOK_SECRET"; do
+            key="${pair%%:*}"
+            value="${pair#*:}"
+            if [ -z "$value" ]; then
+              echo "❌ Missing required secret: $key"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            exit 1
           fi
 
+          {
+            echo "VERCEL_PROJECT_ID=$VERCEL_PROJECT_ID"
+            echo "NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY"
+            echo "STRIPE_SECRET_KEY=$STRIPE_SECRET_KEY"
+            echo "STRIPE_WEBHOOK_SECRET=$STRIPE_WEBHOOK_SECRET"
+          } >> "$GITHUB_ENV"
+
+      - name: Install dependencies
+        run: cd active-app && npm ci
+
+      - name: Build selected app
+        run: cd active-app && npm run build
+
       - name: Deploy to Vercel
-        uses: amondnet/vercel-action@v20
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          vercel-args: '--prod'
         env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
-          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ env.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ env.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          STRIPE_SECRET_KEY: ${{ env.STRIPE_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET: ${{ env.STRIPE_WEBHOOK_SECRET }}
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+        run: |
+          cd active-app
+          npx vercel@latest pull --yes --environment "$DEPLOY_ENV" --token "$VERCEL_TOKEN"
+          if [ "$DEPLOY_ENV" = "prod" ]; then
+            npx vercel@latest deploy --prod --yes --token "$VERCEL_TOKEN"
+          else
+            npx vercel@latest deploy --yes --token "$VERCEL_TOKEN"
+          fi

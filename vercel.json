@@ -1,5 +1,5 @@
 {
   "buildCommand": "cd active-app && npm run build",
-  "installCommand": "cd active-app && npm install",
+  "installCommand": "cd active-app && npm ci",
   "outputDirectory": "active-app/.next"
 }

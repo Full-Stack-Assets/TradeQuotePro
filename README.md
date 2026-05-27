@@ -5,6 +5,15 @@ One-click deploy scaffold for:
 - InkManager
 - InvoiceFlow
 
+## Deployment model
+
+This repository uses a **multi-app, per-environment deployment model**:
+- App selector: `tradequote`, `inkmanager`, `invoiceflow`
+- Environment selector: `dev`, `staging`, `prod`
+- CI creates an `active-app` symlink with `./scripts/switch-app.sh <app>` before install/build/deploy
+- `push` to `main` deploys defaults (`tradequote`, `prod`)
+- `workflow_dispatch` supports explicit app/environment selection
+
 ## Prerequisites
 
 ```bash
@@ -36,6 +45,12 @@ export STRIPE_WEBHOOK_SECRET=whsec_...
 ./scripts/switch-app.sh invoiceflow && ./scripts/deploy.sh
 ```
 
+Run DB migrations only when needed:
+
+```bash
+RUN_DB_MIGRATIONS=true ./scripts/deploy.sh
+```
+
 ## Duplicate this repo for a specific app (one command)
 
 ```bash
@@ -58,16 +73,41 @@ supabase db execute --db-url "$DATABASE_URL" --file "packages/database/$APP/01_s
 
 ## CI/CD
 
-GitHub Actions workflow is available at:
+GitHub Actions workflows are available at:
 
-- `/.github/workflows/deploy.yml`
+- `/.github/workflows/deploy.yml` (Vercel)
+- `/.github/workflows/google-cloudrun-source.yml` (Cloud Run)
 
-Required GitHub secrets:
+### Required GitHub secrets
 
+Global:
 - `VERCEL_TOKEN`
 - `VERCEL_ORG_ID`
-- `VERCEL_PROJECT_ID`
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `STRIPE_SECRET_KEY`
-- `STRIPE_WEBHOOK_SECRET`
+- `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
+- `GCP_PROJECT_ID`
+- `GCP_REGION`
+- `GCP_CLOUD_RUN_SERVICE`
+- `GCP_WORKLOAD_IDENTITY_PROVIDER`
+- `GCP_SERVICE_ACCOUNT_EMAIL`
+
+Per app + environment Vercel project IDs:
+- `VERCEL_PROJECT_ID_TRADEQUOTE_DEV`
+- `VERCEL_PROJECT_ID_TRADEQUOTE_STAGING`
+- `VERCEL_PROJECT_ID_TRADEQUOTE_PROD`
+- `VERCEL_PROJECT_ID_INKMANAGER_DEV`
+- `VERCEL_PROJECT_ID_INKMANAGER_STAGING`
+- `VERCEL_PROJECT_ID_INKMANAGER_PROD`
+- `VERCEL_PROJECT_ID_INVOICEFLOW_DEV`
+- `VERCEL_PROJECT_ID_INVOICEFLOW_STAGING`
+- `VERCEL_PROJECT_ID_INVOICEFLOW_PROD`
+
+Per environment application secrets:
+- `NEXT_PUBLIC_SUPABASE_URL_DEV`, `NEXT_PUBLIC_SUPABASE_URL_STAGING`, `NEXT_PUBLIC_SUPABASE_URL_PROD`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY_DEV`, `NEXT_PUBLIC_SUPABASE_ANON_KEY_STAGING`, `NEXT_PUBLIC_SUPABASE_ANON_KEY_PROD`
+- `STRIPE_SECRET_KEY_DEV`, `STRIPE_SECRET_KEY_STAGING`, `STRIPE_SECRET_KEY_PROD`
+- `STRIPE_WEBHOOK_SECRET_DEV`, `STRIPE_WEBHOOK_SECRET_STAGING`, `STRIPE_WEBHOOK_SECRET_PROD`
+
+### Branch/environment paths
+
+- `main` push => `tradequote` to `prod`
+- Manual dispatch => selected app to selected environment (`dev`/`staging`/`prod`)

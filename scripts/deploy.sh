@@ -15,6 +15,7 @@ if [ -z "$APP" ] && [ -L "active-app" ]; then
 fi
 APP="${APP:-tradequote}"
 MIGRATION_FILE="packages/database/$APP/01_schema.sql"
+RUN_DB_MIGRATIONS="${RUN_DB_MIGRATIONS:-false}"
 
 case "$APP" in
   tradequote|inkmanager|invoiceflow) ;;
@@ -25,16 +26,27 @@ case "$APP" in
     ;;
 esac
 
+case "$RUN_DB_MIGRATIONS" in
+  true|false) ;;
+  *)
+    echo "❌ RUN_DB_MIGRATIONS must be 'true' or 'false'"
+    exit 1
+    ;;
+esac
+
 # 1. Check environment variables
 required_vars=(
   STRIPE_SECRET_KEY
   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
   SUPABASE_PROJECT_REF
-  DATABASE_URL
   NEXT_PUBLIC_SUPABASE_URL
   NEXT_PUBLIC_SUPABASE_ANON_KEY
   STRIPE_WEBHOOK_SECRET
 )
+
+if [ "$RUN_DB_MIGRATIONS" = "true" ]; then
+  required_vars+=(DATABASE_URL)
+fi
 
 for var_name in "${required_vars[@]}"; do
   if [ -z "${!var_name:-}" ]; then
@@ -53,13 +65,17 @@ fi
 echo "🔗 Linking to Supabase project..."
 supabase link --project-ref "$SUPABASE_PROJECT_REF"
 
-# 4. Run migrations
-if [ -f "$MIGRATION_FILE" ]; then
-  echo "📦 Running database migrations for $APP..."
-  supabase db execute --db-url "$DATABASE_URL" --file "$MIGRATION_FILE"
+# 4. Run migrations only when requested
+if [ "$RUN_DB_MIGRATIONS" = "true" ]; then
+  if [ -f "$MIGRATION_FILE" ]; then
+    echo "📦 Running database migrations for $APP..."
+    supabase db execute --db-url "$DATABASE_URL" --file "$MIGRATION_FILE"
+  else
+    echo "❌ Migration file not found: $MIGRATION_FILE"
+    exit 1
+  fi
 else
-  echo "❌ Migration file not found: $MIGRATION_FILE"
-  exit 1
+  echo "⏭️ Skipping database migrations (set RUN_DB_MIGRATIONS=true to enable)."
 fi
 
 # 5. Set environment variables in Supabase
