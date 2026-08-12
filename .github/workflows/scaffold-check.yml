@@ -1,0 +1,45 @@
+name: Scaffold check
+
+on:
+  pull_request:
+  push:
+    branches-ignore:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate shell scripts
+        run: bash -n scripts/switch-app.sh switch-app.sh
+
+      - name: Validate scaffold inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+          for app in tradequote inkmanager invoiceflow; do
+            test -d "apps/$app"
+            test -f "packages/database/$app/01_schema.sql"
+            ./scripts/switch-app.sh "$app"
+            test -L active-app
+            test "$(readlink active-app)" = "apps/$app"
+          done
+          rm -f active-app
+
+      - name: Confirm applications remain explicitly unactivated
+        shell: bash
+        run: |
+          set -euo pipefail
+          for app in tradequote inkmanager invoiceflow; do
+            if [ -f "apps/$app/package.json" ]; then
+              echo "Application $app now contains package.json; add deterministic app-specific build and test gates before activating deployment."
+            else
+              echo "Application $app remains a documented placeholder."
+            fi
+          done

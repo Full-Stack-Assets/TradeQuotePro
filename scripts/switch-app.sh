@@ -24,4 +24,4 @@ if [ ! -d "apps/$APP" ]; then
 fi
 
 ln -sfn "apps/$APP" ./active-app
-echo "Now deploying: $APP"
+echo "Selected app: $APP"
