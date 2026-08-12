@@ -1,82 +1,71 @@
-# TradeQuotePro Monorepo Starter
+# TradeQuotePro Monorepo Scaffold
 
-One-click deploy scaffold for:
+This repository is a provider-neutral scaffold for three product concepts:
+
 - TradeQuote Pro
 - InkManager
 - InvoiceFlow
 
-This repo is a scaffold: the `apps/*` folders are placeholders. To deploy successfully, each app you deploy must contain a real Next.js project (at minimum `apps/<app>/package.json`).
+The `apps/*` directories currently contain placeholders rather than runnable applications. No production deployment is configured or claimed. A deploy workflow should be added only after the selected app contains a real build, its runtime requirements are known, and the target connection has been independently verified.
 
-## Prerequisites
+## Select an app
 
 ```bash
-npm install -g vercel
-brew install supabase/tap/supabase
-# or: curl -fsSL https://supabase.com/install.sh | sh
+./scripts/switch-app.sh tradequote
+./scripts/switch-app.sh inkmanager
+./scripts/switch-app.sh invoiceflow
 ```
 
-## One-time setup
+The script updates the `active-app` symlink. Selection does not deploy or provision infrastructure.
+
+## Database migrations
+
+App-specific starter migrations live at:
+
+- `packages/database/tradequote/01_schema.sql`
+- `packages/database/inkmanager/01_schema.sql`
+- `packages/database/invoiceflow/01_schema.sql`
+
+Review and complete a migration before applying it to any database. When a verified Supabase project exists, an operator can apply a migration explicitly:
 
 ```bash
-git clone https://github.com/Full-Stack-Assets/TradeQuotePro.git tradequote-pro
-cd tradequote-pro
-
-export STRIPE_SECRET_KEY=sk_test_...
-export NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
-export SUPABASE_PROJECT_REF=your_supabase_ref
-export DATABASE_URL=postgresql://postgres:[password]@db.your-project.supabase.co:5432/postgres
-export NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-export NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
-export STRIPE_WEBHOOK_SECRET=whsec_...
-```
-
-## Deploy any app
-
-```bash
-./scripts/switch-app.sh tradequote && ./scripts/deploy.sh
-./scripts/switch-app.sh inkmanager && ./scripts/deploy.sh
-./scripts/switch-app.sh invoiceflow && ./scripts/deploy.sh
-```
-
-If you prefer, you can also deploy by setting `APP` directly (this also updates `./active-app` automatically):
-
-```bash
-APP=tradequote ./scripts/deploy.sh
-```
-
-## Duplicate this repo for a specific app (one command)
-
-```bash
-git clone https://github.com/Full-Stack-Assets/TradeQuotePro.git my-app \
-  && cd my-app \
-  && ./scripts/switch-app.sh tradequote
-```
-
-## Migration files
-
-- `/packages/database/tradequote/01_schema.sql`
-- `/packages/database/inkmanager/01_schema.sql`
-- `/packages/database/invoiceflow/01_schema.sql`
-
-Apply app-specific migration file:
-
-```bash
+export APP=tradequote
+export DATABASE_URL='postgresql://...'
 supabase db execute --db-url "$DATABASE_URL" --file "packages/database/$APP/01_schema.sql"
 ```
 
-## CI/CD
+Do not store credentials in this repository.
 
-GitHub Actions workflow is available at:
+## Scaffold verification
 
-- `/.github/workflows/deploy.yml`
+`.github/workflows/scaffold-check.yml` verifies that:
 
-Required GitHub secrets:
+- each supported app directory exists;
+- each starter migration exists;
+- app selection works for all three names;
+- shell scripts pass syntax checks; and
+- no placeholder deployment workflow is treated as a production path.
 
-- `VERCEL_TOKEN`
-- `VERCEL_ORG_ID`
-- `VERCEL_PROJECT_ID`
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `STRIPE_SECRET_KEY`
-- `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
-- `STRIPE_WEBHOOK_SECRET`
+Run the same checks locally:
+
+```bash
+bash -n scripts/switch-app.sh switch-app.sh
+for app in tradequote inkmanager invoiceflow; do
+  ./scripts/switch-app.sh "$app"
+  test "$(readlink active-app)" = "apps/$app"
+done
+rm -f active-app
+```
+
+## Activation gate
+
+Before enabling deployment for any app, add and verify at minimum:
+
+1. a real application and lockfile under `apps/<app>/`;
+2. deterministic build and test commands;
+3. completed database migrations and rollback instructions;
+4. documented runtime and secret names;
+5. an authenticated target environment; and
+6. a smoke test that proves the deployed artifact matches the reviewed commit.
+
+Until those gates exist, this repository remains a scaffold and must fail closed rather than advertise an unavailable deployment.
